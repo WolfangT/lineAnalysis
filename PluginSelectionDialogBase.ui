@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <author>Borys Jurgiel</author>
+ <author>Wolfang Torres</author>
  <class>PluginSelectionDialogBase</class>
  <widget class="QDialog" name="PluginSelectionDialogBase">
   <property name="geometry">
@@ -27,7 +27,7 @@
    <enum>Qt::DefaultContextMenu</enum>
   </property>
   <property name="windowTitle">
-   <string>Reload a plugin</string>
+   <string>Select a Layer</string>
   </property>
   <property name="whatsThis">
    <string/>
