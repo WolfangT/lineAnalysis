@@ -5,8 +5,8 @@ name=LineAnalysis
 email=wolfang.torres@gmail.com
 author=Wolfang Torres
 qgisMinimumVersion=3.0
-description=Given a line, it checkes layers for other geometries that intersect it.
-about=Given a line, it checkes layers for other geometries that intersect it.
+description=Given a line, it checks layers for other geometries that intersect it.
+about=Given a line, it checks layers for other geometries that intersect it.
 version=version 1.0
 tracker=
 repository=https://github.com/WolfangT/lineAnalysis
@@ -17,7 +17,7 @@ category=Raster
 changelog=The changelog lists the plugin versions
     and their changes as in the example below:
     0.1 - first test version
-    1.0 - fist release
+    1.0 - first release
 
 ; Tags are in comma separated value format, spaces are allowed within the
 ; tag name.
