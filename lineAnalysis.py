@@ -38,11 +38,14 @@ def check_intersections(layers, prospect_layer, line):
                         "layer": layer,
                         "feature": feat,
                         "intersections": n_int,
+                        "attributes_list": list(layer.attributeAliases().keys()),
+                        "feature_attributes": feat.attributeMap(),
                     }
                 )
                 QgsMessageLog.logMessage(
-                    f"layer: {layer.name()} - No intersections: {n_int} - {feat.attributeMap()}",
+                    f"layer: {layer.name()} - No intersections: {n_int} - Feature ID: {feat.id()}",
                     PLUGIN_NAME,
+                    Qgis.MessageLevel.Info,
                 )
     return results
 
@@ -55,8 +58,11 @@ def analise_layer(layers, prospect_layer):
     QgsMessageLog.logMessage(
         "-" * 50 + f"\nSearching collisions for layer: {prospect_layer.name()}",
         PLUGIN_NAME,
+        level=Qgis.MessageLevel.Success,
     )
     for line in filter_features(prospect_layer.getFeatures()):
         results += check_intersections(layers, prospect_layer, line)
-    QgsMessageLog.logMessage(f">Finished!\n" + "-" * 50, PLUGIN_NAME)
+    QgsMessageLog.logMessage(
+        f">Finished!\n" + "-" * 50, PLUGIN_NAME, level=Qgis.MessageLevel.Success
+    )
     return results
