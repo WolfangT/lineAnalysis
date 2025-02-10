@@ -1,7 +1,5 @@
 """LineAnalysis main entry point for setting up the UI, Processing."""
 
-import csv
-from time import sleep
 from pathlib import Path
 
 from qgis.PyQt.QtGui import *
@@ -19,6 +17,7 @@ from qgis.PyQt.QtWidgets import (
 from qgis.PyQt.QtCore import QDateTime, QDate, QVariant
 
 from .lineAnalysis import analise_layer
+from .outputWriter import writeCSVTask, TestTask
 from .tools import plugin_path, PLUGIN_NAME, get_prospect_layer
 from .PluginSelectionDialog import LayerSelectionDialog, FeatureSelectionDialog
 
@@ -91,8 +90,13 @@ class lineAnalisisPlugin:
             duration=-1,
         )
         filename = Path(QgsProject.instance().fileName()).parent / "output.csv"
-        self.taskCSV = writeCSVTask(filename, results, self.iface)
-        QgsApplication.taskManager().addTask(self.taskCSV)
+        # self.taskCSV = writeCSVTask(filename, results, self.iface)
+        # QgsApplication.taskManager().addTask(self.taskCSV)
+        QgsApplication.taskManager().addTask(self.task1)
+        self.task1.taskCompleted.connect(self.step2)
+
+    def step2(self):
+        QgsApplication.taskManager().addTask(self.task2)
 
     def renderTest(self, painter):
         pass
@@ -108,113 +112,3 @@ class lineAnalisisPlugin:
             return get_prospect_layer(layers, layers[0].name())
 
 
-class writeCSVTask(QgsTask):
-
-    def __init__(self, filename, results, iface):
-        super().__init__("Creating and Cleaning CSV")
-        self.filename = filename
-        self.results = results
-        self.iface = iface
-
-    def run(self):
-        QgsMessageLog.logMessage(
-            f"Started task {self.description()}", PLUGIN_NAME, Qgis.Success
-        )
-        fieldnames = self.get_csv_fieldnames()
-        if fieldnames is None:
-            return False
-        with open(self.filename, "w", newline="") as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            for result in self.results:
-                writer.writerow(
-                    {
-                        "qgis_prospect_layer": result["prospect_layer"].name(),
-                        "qgis_prospect_feature_id": result["prospect_feature"].id(),
-                        "qgis_layer": result["layer"].name(),
-                        "#_of_intersections": result["intersections"],
-                        "qgis_feature_id": result["feature"].id(),
-                    }
-                    | self.get_feature_attributes(result["feature"])
-                )
-        return True
-
-    def finished(self, result):
-        QgsMessageLog.logMessage(
-            f"Output written to {self.filename}",
-            PLUGIN_NAME,
-            Qgis.Success,
-        )
-        self.iface.messageBar().pushMessage(
-            title=f"{PLUGIN_NAME} Info",
-            text=f"Output written to {self.filename}",
-            level=Qgis.Success,
-            duration=-1,
-        )
-
-    def get_csv_fieldnames(self):
-        fieldnames = [
-            "qgis_prospect_layer",
-            "qgis_prospect_feature_id",
-            "qgis_layer",
-            "#_of_intersections",
-            "qgis_feature_id",
-        ]
-        layer = None
-        for result in self.results:
-            if not result["layer"] is layer:
-                layer = result["layer"]
-                for attr in list(layer.attributeAliases().keys()):
-                    if attr not in fieldnames:
-                        fieldnames.append(attr)
-        working_fieldnames = fieldnames[5:]
-        total = len(working_fieldnames)
-        for i, fieldname in enumerate(working_fieldnames):
-            self.setProgress(i * 100 // total)
-            if self.isCanceled():
-                return False
-            valid = False
-            for result in self.results:
-                attr_map = result["feature"].attributeMap()
-                if fieldname in attr_map:
-                    value = attr_map[fieldname]
-                    if not (
-                        value is None
-                        or str(value).strip() == ""
-                        or (type(value) is QVariant and value.isNull())
-                    ):
-                        valid = True
-                        break
-            if not valid:
-                fieldnames.remove(fieldname)
-        return fieldnames
-
-    def get_feature_attributes(self, feature):
-        attr_map = feature.attributeMap()
-        for key, value in attr_map.copy().items():
-            if value is None:
-                del attr_map[key]
-            if str(value).strip() in ("NULL", ""):
-                del attr_map[key]
-            elif type(value) is QVariant and value.isNull():
-                del attr_map[key]
-            elif type(value) is QDate:
-                attr_map[key] = value.toString("yyyy-MM-dd")
-            elif type(value) is QDateTime:
-                attr_map[key] = value.toString("yyyy-MM-dd HH:mm:ss")
-        return attr_map
-
-
-class TestTask(QgsTask):
-
-    def __init__(self):
-        super().__init__("test task")
-
-    def run(self):
-        wait_time = 1 / 100.0
-        for i in range(101):
-            sleep(wait_time)
-            self.setProgress(i)
-            if self.isCanceled():
-                return False
-        return True

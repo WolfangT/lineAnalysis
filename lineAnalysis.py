@@ -11,15 +11,21 @@ from .tools import filter_search_layers, filter_features, PLUGIN_NAME
 # functions
 
 
-def count_number_of_intersections(feat, line):
+def analyse_intersections(feat, line):
     intersection = feat.geometry().intersection(line.geometry())
     int_type = QgsWkbTypes.displayString(intersection.wkbType())
-    n_int = 1
+    points = 1
+    length = 0
+    area = 0
+    if "Polygon" in int_type:
+        points = len(intersection.asGeometryCollection())
+        area = intersection.area()
     if "Line" in int_type:
-        n_int = len(list(intersection.vertices())) // 2
+        points = len(intersection.asGeometryCollection())
+        length = intersection.length()
     elif "Point" in int_type:
-        n_int = len(list(intersection.vertices()))
-    return n_int
+        points = len(list(intersection.vertices()))
+    return points, length, area
 
 
 def check_intersections(layers, prospect_layer, line):
@@ -30,20 +36,20 @@ def check_intersections(layers, prospect_layer, line):
         QgsMessageLog.logMessage(f"->Checking layer: {layer.name()}", PLUGIN_NAME)
         for feat in layer.getFeatures(line.geometry().boundingBox()):
             if feat.geometry().intersects(line.geometry()):
-                n_int = count_number_of_intersections(feat, line)
+                points, length, area = analyse_intersections(feat, line)
                 results.append(
                     {
                         "prospect_layer": prospect_layer,
                         "prospect_feature": line,
                         "layer": layer,
                         "feature": feat,
-                        "intersections": n_int,
-                        "attributes_list": list(layer.attributeAliases().keys()),
-                        "feature_attributes": feat.attributeMap(),
+                        "intersections": points,
+                        "length": length,
+                        "area": area,
                     }
                 )
                 QgsMessageLog.logMessage(
-                    f"layer: {layer.name()} - No intersections: {n_int} - Feature ID: {feat.id()}",
+                    f"layer: {layer.name()} - No intersections: {points} - Feature ID: {feat.id()}",
                     PLUGIN_NAME,
                     Qgis.MessageLevel.Info,
                 )
