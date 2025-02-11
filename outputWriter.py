@@ -1,24 +1,37 @@
+"""outputWriter.py
 
-"""outputWriter.py - Module for diferent clasess of output formats"""
+Module for diferent clasess of output formats
+"""
 
 import csv
+from time import sleep
 
 from qgis.core import *
+from qgis.PyQt.QtCore import QDateTime, QDate, QVariant
+
+from .tools import PLUGIN_NAME
+
 
 # Classes
+
 
 class writeCSVTask(QgsTask):
     """Task that creates and cleans a csv file"""
 
-    def __init__(self, filename, results, iface):
+    def __init__(
+        self,
+        filename,
+        results,
+    ):
         super().__init__("Creating and Cleaning CSV")
         self.filename = filename
         self.results = results
-        self.iface = iface
 
     def run(self):
         QgsMessageLog.logMessage(
-            f"Started task {self.description()}", PLUGIN_NAME, Qgis.Success
+            f"Started task {self.description()}",
+            PLUGIN_NAME,
+            Qgis.Success,
         )
         fieldnames = self.get_csv_fieldnames()
         if fieldnames is None:
@@ -46,12 +59,6 @@ class writeCSVTask(QgsTask):
             f"Output written to {self.filename}",
             PLUGIN_NAME,
             Qgis.Success,
-        )
-        self.iface.messageBar().pushMessage(
-            title=f"{PLUGIN_NAME} Info",
-            text=f"Output written to {self.filename}",
-            level=Qgis.Success,
-            duration=-1,
         )
 
     def get_csv_fieldnames(self):
@@ -107,26 +114,3 @@ class writeCSVTask(QgsTask):
             elif type(value) is QDateTime:
                 attr_map[key] = value.toString("yyyy-MM-dd HH:mm:ss")
         return attr_map
-
-
-class TestTask(QgsTask):
-
-    def __init__(self, name, _input):
-        super().__init__(f"test task {name}")
-        self.input = _input
-        self.output = []
-
-    def run(self):
-        wait_time = 5 / 100.0
-        self.output.append(self.input[-1])
-        for i in range(101):
-            self.output.append(self.output[-1]+1)
-            sleep(wait_time)
-            self.setProgress(i)
-            if self.isCanceled():
-                return False
-        return True
-    
-
-    def finished(self, result):
-        print(f"{self.description()}: {self.output}")
