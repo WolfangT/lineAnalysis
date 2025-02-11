@@ -9,7 +9,7 @@ from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QAction
 
 from .lineAnalysis import CheckIntersections
-from .outputWriter import writeCSVTask, TestTask
+from .outputWriter import WriteCSVTask, WriteCSVTask2
 from .tools import plugin_path, PLUGIN_NAME, get_prospect_layer, filter_search_layers
 from .PluginSelectionDialog import LayerSelectionDialog, FeatureSelectionDialog
 
@@ -87,7 +87,7 @@ class lineAnalisisPlugin:
             filename = Path(QgsProject.instance().fileName()).parent / f"output_{i}.csv"
             if not filename.exists():
                 break
-        self.output_task = writeCSVTask(filename, self.main_task.results)
+        self.output_task = WriteCSVTask2(filename, self.main_task.results)
         self.output_task.taskCompleted.connect(self.on_output_task_completed)
         QgsApplication.taskManager().addTask(self.output_task)
 
@@ -96,7 +96,7 @@ class lineAnalisisPlugin:
             title=f"{PLUGIN_NAME} Info",
             text=f"Output written to {self.output_task.filename}",
             level=Qgis.Success,
-            duration=-1,
+            duration=0,
         )
 
     def select_layer(self, layers):

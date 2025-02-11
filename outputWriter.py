@@ -7,22 +7,18 @@ import csv
 from time import sleep
 
 from qgis.core import *
-from qgis.PyQt.QtCore import QDateTime, QDate, QVariant
+from qgis.PyQt.QtCore import QVariant
 
-from .tools import PLUGIN_NAME
+from .tools import PLUGIN_NAME, get_feature_attributes
 
 
 # Classes
 
 
-class writeCSVTask(QgsTask):
+class WriteCSVTask(QgsTask):
     """Task that creates and cleans a csv file"""
 
-    def __init__(
-        self,
-        filename,
-        results,
-    ):
+    def __init__(self, filename, results):
         super().__init__("Creating and Cleaning CSV")
         self.filename = filename
         self.results = results
@@ -50,7 +46,7 @@ class writeCSVTask(QgsTask):
                         "length": result["length"],
                         "area": result["area"],
                     }
-                    | self.get_feature_attributes(result["feature"])
+                    | get_feature_attributes(result["feature"])
                 )
         return True
 
@@ -100,17 +96,87 @@ class writeCSVTask(QgsTask):
                 fieldnames.remove(fieldname)
         return fieldnames
 
-    def get_feature_attributes(self, feature):
-        attr_map = feature.attributeMap()
-        for key, value in attr_map.copy().items():
-            if value is None:
-                del attr_map[key]
-            if str(value).strip() in ("NULL", ""):
-                del attr_map[key]
-            elif type(value) is QVariant and value.isNull():
-                del attr_map[key]
-            elif type(value) is QDate:
-                attr_map[key] = value.toString("yyyy-MM-dd")
-            elif type(value) is QDateTime:
-                attr_map[key] = value.toString("yyyy-MM-dd HH:mm:ss")
-        return attr_map
+
+class WriteCSVTask2(QgsTask):
+    """Task that creates and cleans a csv file"""
+
+    def __init__(self, filename, results):
+        super().__init__("Creating and Cleaning CSV")
+        self.filename = filename
+        self.results = results
+
+    def run(self):
+        QgsMessageLog.logMessage(
+            f"Started task {self.description()}",
+            PLUGIN_NAME,
+            Qgis.Success,
+        )
+        fieldnames = (
+            "qgis_prospect_line",
+            "qgis_layer",
+            "qgis_feature_id",
+            "intersections (No)",
+            "length (km)",
+            "area (ha)",
+            "properties",
+        )
+        total = len(self.results)
+        p_layer = None
+        total_points = 0
+        total_length = 0
+        total_area = 0
+        with open(self.filename, "w", newline="") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for i, result in enumerate(self.results):
+                self.setProgress(i * 100 / total)
+                if self.isCanceled():
+                    return False
+                if not result["layer"] is p_layer:
+                    if not p_layer is None:
+                        writer.writerow(
+                            {
+                                "qgis_prospect_line": result["prospect_feature"]
+                                .attributeMap()
+                                .get("name", result["prospect_feature"].id()),
+                                "qgis_layer": f"Total - {p_layer.name().split(" — ")[0]}",
+                                "intersections (No)": total_points,
+                                "length (km)": round(total_length, 3),
+                                "area (ha)": round(total_area, 4),
+                            }
+                        )
+                        total_points = 0
+                        total_length = 0
+                        total_area = 0
+                    p_layer = result["layer"]
+                total_points += result["intersections"]
+                total_length += result["length"]
+                total_area += result["area"]
+                writer.writerow(
+                    {
+                        "qgis_prospect_line": result["prospect_feature"]
+                        .attributeMap()
+                        .get("name", result["prospect_feature"].id()),
+                        "qgis_layer": result["layer"].name().split(" — ")[0],
+                        "qgis_feature_id": result["feature"].id(),
+                        "intersections (No)": result["intersections"],
+                        "length (km)": result["length"],
+                        "area (ha)": result["area"],
+                        "properties": self.create_properties_string(result["feature"]),
+                    }
+                )
+        return True
+
+    def finished(self, result):
+        QgsMessageLog.logMessage(
+            f"Output written to {self.filename}",
+            PLUGIN_NAME,
+            Qgis.Success,
+        )
+
+    def create_properties_string(self, feature):
+        data = get_feature_attributes(feature)
+        string = ""
+        for key, value in data.items():
+            string += f"{key}: {value}, "
+        return string

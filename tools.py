@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from qgis.core import QgsVectorLayer, QgsProject
+from qgis.PyQt.QtCore import QDateTime, QDate, QVariant
 
 # Constans
 
@@ -48,3 +49,19 @@ def get_prospect_layer(layers, prospect_layer_name):
             else:
                 raise ValueError("Prospect layer must be a VectorLayer")
     raise ValueError("No prospect layer found")
+
+
+def get_feature_attributes(feature):
+    attr_map = feature.attributeMap()
+    for key, value in attr_map.copy().items():
+        if value is None:
+            del attr_map[key]
+        if str(value).strip() in ("NULL", ""):
+            del attr_map[key]
+        elif type(value) is QVariant and value.isNull():
+            del attr_map[key]
+        elif type(value) is QDate:
+            attr_map[key] = value.toString("yyyy-MM-dd")
+        elif type(value) is QDateTime:
+            attr_map[key] = value.toString("yyyy-MM-dd HH:mm:ss")
+    return attr_map
