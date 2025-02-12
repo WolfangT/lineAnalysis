@@ -1,0 +1,8 @@
+TYPE='Database Config File' VERSION='1' UNITS='US' SOURCE='PLS-DB Version 16.81' USER='C G' FILENAME='C:\users\wolfang\Documents\Trabajos\lineAnalysis\test.dbc'
+Parts begin
+ODBC = 
+Connect = 
+DeletePartsBeforeImport = 0
+Table = 
+Columns = 0
+end

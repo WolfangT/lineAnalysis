@@ -9,12 +9,27 @@ from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QAction
 
 from .lineAnalysis import CheckIntersections
-from .outputWriter import WriteCSVTask, WriteCSVTask2
+from .outputWriter import WriteCSVTask, WriteCSVTask2, WriteXLSX
 from .tools import plugin_path, PLUGIN_NAME, get_prospect_layer, filter_search_layers
 from .PluginSelectionDialog import LayerSelectionDialog, FeatureSelectionDialog
 
 
 # main class
+
+LAYERS_ATTRIBUTES_MAP = {
+    "Towers": ("TOWER_ASSE", "ACTION_DTT", "STATUS", "LINE_SERIE", "TOWER_CONS"),
+    "CABLE": ("OPERATING_", "STATUS", "CABLE_TYPE", "CABLE_SET", "CABLE_ROUT"),
+    "OHL": ("Towers_In", "STATUS", "OPERATING_", "CIRCUIT1", "CIRCUIT2"),
+    "AC6 Roads — ac6_test__featureclasstofeatureclass_infrastructure_roadlink": (
+        "class",
+        "roadNumber",
+        "name1",
+        "name2",
+        "formOfWay",
+        "function",
+    ),
+    "Railways+20m — buffered": ("id",),
+}
 
 
 class lineAnalisisPlugin:
@@ -84,10 +99,14 @@ class lineAnalisisPlugin:
         )
         # Get a available filename
         for i in range(1, 1000):
-            filename = Path(QgsProject.instance().fileName()).parent / f"output_{i}.csv"
+            filename = (
+                Path(QgsProject.instance().fileName()).parent / f"output_{i}.xslx"
+            )
             if not filename.exists():
                 break
-        self.output_task = WriteCSVTask2(filename, self.main_task.results)
+        self.output_task = WriteXLSX(
+            filename, self.main_task.results, LAYERS_ATTRIBUTES_MAP
+        )
         self.output_task.taskCompleted.connect(self.on_output_task_completed)
         QgsApplication.taskManager().addTask(self.output_task)
 

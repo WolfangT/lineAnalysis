@@ -4,12 +4,18 @@ Module for diferent clasess of output formats
 """
 
 import csv
+import sys
 from time import sleep
 
 from qgis.core import *
 from qgis.PyQt.QtCore import QVariant
 
-from .tools import PLUGIN_NAME, get_feature_attributes
+from .tools import PLUGIN_NAME, get_feature_attributes, plugin_path, get_excel_cols
+
+import_path = plugin_path("./venv/lib/python3.13/site-packages")
+sys.path.insert(0, import_path)
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill, Border, Side, Alignment, Protection, Font
 
 
 # Classes
@@ -180,3 +186,144 @@ class WriteCSVTask2(QgsTask):
         for key, value in data.items():
             string += f"{key}: {value}, "
         return string
+
+
+class WriteXLSX(QgsTask):
+    """Task that creates and cleans an Excel file"""
+
+    font_general = Font(
+        name="Calibri",
+        size=11,
+        bold=False,
+        italic=False,
+        vertAlign=None,
+        underline="none",
+        strike=False,
+        color="FF000000",
+    )
+
+    font_title = Font(
+        name="Calibri",
+        size=11,
+        bold=True,
+        italic=False,
+        vertAlign=None,
+        underline="none",
+        strike=False,
+        color="FF000000",
+    )
+
+    alignment_general = Alignment(
+        horizontal="left",
+        vertical="center",
+        text_rotation=0,
+        wrap_text=True,
+        shrink_to_fit=True,
+        indent=0,
+    )
+
+    alignment_center = Alignment(
+        horizontal="center",
+        vertical="center",
+        text_rotation=0,
+        wrap_text=True,
+        shrink_to_fit=True,
+        indent=0,
+    )
+
+    estilos = {
+        "general": alignment_general,
+        "center": alignment_center,
+    }
+
+    def __init__(self, filename, results, layers_attributes_map):
+        super().__init__("Creating and Cleaning an Excel file")
+        self.filename = filename
+        self.results = results
+        self.layers_attributes_map = layers_attributes_map
+
+    def run(self):
+        fieldnames = {
+            "qgis_prospect_line": [10, "center", True],
+            "qgis_layer": [25, "center", True],
+            "qgis_feature_id": [10, "center", True],
+            "intersections (No)": [10, "general", True],
+            "length (km)": [10, "general", True],
+            "area (ha)": [10, "general", True],
+        }
+        total = len(self.results)
+        layers = []
+        for i, result in enumerate(self.results):
+            self.setProgress(i * 30 / total)
+            if self.isCanceled():
+                return False
+            if result["layer"] not in layers:
+                layer = result["layer"]
+                layers.append(layer)
+                if layer.name() in self.layers_attributes_map:
+                    for attr in self.layers_attributes_map[layer.name()]:
+                        if attr not in fieldnames:
+                            fieldnames[attr] = [10, "general", False]
+                else:
+                    for attr in list(layer.attributeAliases().keys()):
+                        if attr not in fieldnames:
+                            fieldnames[attr] = [10, "general", False]
+        wb = Workbook()
+        normal = wb._named_styles["Normal"]
+        normal.alignment.wrap_text = True
+        normal.alignment.vertical = "center"
+        normal.alignment.shrink_to_fit = True
+        normal.font = self.font_general
+        ws = wb.active
+        wb.alignment = self.alignment_general
+        ws.append(list(fieldnames))
+        for i, result in enumerate(self.results):
+            self.setProgress(30 + i * 30 / total)
+            if self.isCanceled():
+                return False
+            data = {
+                "qgis_prospect_line": result["prospect_feature"]
+                .attributeMap()
+                .get("name", result["prospect_feature"].id()),
+                "qgis_layer": result["layer"].name().split(" — ")[0],
+                "qgis_feature_id": result["feature"].id(),
+                "intersections (No)": result["intersections"],
+                "length (km)": result["length"],
+                "area (ha)": result["area"],
+            } | get_feature_attributes(result["feature"])
+            for key, value in data.items():
+                if key in fieldnames:
+                    if value:
+                        fieldnames[key][0] = max(len(str(value)), fieldnames[key][0])
+                        fieldnames[key][2] = True
+            ws.append([data.get(field) for field in fieldnames])
+        # extras
+        to_delete = []
+        for i, (col, (size, alin, has_value)) in enumerate(
+            zip(get_excel_cols(), fieldnames.values())
+        ):
+            ws.column_dimensions[col].width = size or 10
+            ws.column_dimensions[col].alignment = self.estilos[alin]
+            if not has_value:
+                to_delete.append(i)
+        total = len(to_delete)
+        for i, col in enumerate(to_delete[::-1]):
+            self.setProgress(60 + i * 40 / total)
+            if self.isCanceled():
+                return False
+            ws.delete_cols(col + 1)
+        filters = ws.auto_filter
+        for i, col in zip(range(len(fieldnames) - len(to_delete)), get_excel_cols()):
+            pass
+        filters.ref = f"A:{col}"
+        ws.row_dimensions[1].font = self.font_title
+        # save
+        wb.save(self.filename)
+        return True
+
+    def finished(self, result):
+        QgsMessageLog.logMessage(
+            f"Output written to {self.filename}",
+            PLUGIN_NAME,
+            Qgis.Success,
+        )

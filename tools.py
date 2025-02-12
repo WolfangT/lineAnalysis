@@ -1,6 +1,7 @@
 """helper functions"""
 
 from pathlib import Path
+import string
 
 from qgis.core import QgsVectorLayer, QgsProject
 from qgis.PyQt.QtCore import QDateTime, QDate, QVariant
@@ -61,7 +62,21 @@ def get_feature_attributes(feature):
         elif type(value) is QVariant and value.isNull():
             del attr_map[key]
         elif type(value) is QDate:
-            attr_map[key] = value.toString("yyyy-MM-dd")
+            attr_map[key] = value.toPyDate()
+            # attr_map[key] = value.toString("dd/MM/yyyy")
         elif type(value) is QDateTime:
-            attr_map[key] = value.toString("yyyy-MM-dd HH:mm:ss")
+            # attr_map[key] = value.toString("dd/MM/yyyy HH:mm:ss")
+            attr_map[key] = value.toPyDateTime()
     return attr_map
+
+
+def get_excel_cols():
+    for l in string.ascii_uppercase:
+        yield l
+    for l1 in string.ascii_uppercase:
+        for l2 in string.ascii_uppercase:
+            yield l1 + l2
+    for l1 in string.ascii_uppercase:
+        for l2 in string.ascii_uppercase:
+            for l3 in string.ascii_uppercase:
+                yield l1 + l2 + l3
