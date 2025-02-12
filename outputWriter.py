@@ -281,10 +281,11 @@ class WriteXLSX(QgsTask):
             self.setProgress(45 + i * 45 / total)
             if self.isCanceled():
                 return False
+            line = result["prospect_feature"].attributeMap().get("name")
+            if line is None or (type(line) is QVariant and line.isNull()):
+                line = result["prospect_feature"].id()
             data = {
-                "qgis_prospect_line": result["prospect_feature"]
-                .attributeMap()
-                .get("name", result["prospect_feature"].id()),
+                "qgis_prospect_line": line,
                 "qgis_layer": result["layer"].name().split(" — ")[0],
                 "qgis_feature_id": result["feature"].id(),
                 "intersections (No)": result["intersections"],
