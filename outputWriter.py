@@ -254,7 +254,7 @@ class WriteXLSX(QgsTask):
         total = len(self.results)
         layers = []
         for i, result in enumerate(self.results):
-            self.setProgress(i * 30 / total)
+            self.setProgress(i * 45 / total)
             if self.isCanceled():
                 return False
             if result["layer"] not in layers:
@@ -278,7 +278,7 @@ class WriteXLSX(QgsTask):
         wb.alignment = self.alignment_general
         ws.append(list(fieldnames))
         for i, result in enumerate(self.results):
-            self.setProgress(30 + i * 30 / total)
+            self.setProgress(45 + i * 45 / total)
             if self.isCanceled():
                 return False
             data = {
@@ -296,7 +296,11 @@ class WriteXLSX(QgsTask):
                     if value:
                         fieldnames[key][0] = max(len(str(value)), fieldnames[key][0])
                         fieldnames[key][2] = True
-            ws.append([data.get(field) for field in fieldnames])
+            try:
+                ws.append([data.get(field) for field in fieldnames])
+            except ValueError as err:
+                print([data.get(field) for field in fieldnames])
+                print(err)
         # extras
         to_delete = []
         for i, (col, (size, alin, has_value)) in enumerate(
@@ -305,17 +309,16 @@ class WriteXLSX(QgsTask):
             ws.column_dimensions[col].width = size or 10
             ws.column_dimensions[col].alignment = self.estilos[alin]
             if not has_value:
-                to_delete.append(i)
+                to_delete.append((i, col))
+        filters = ws.auto_filter
+        filters.ref = f"A:{col}"
         total = len(to_delete)
-        for i, col in enumerate(to_delete[::-1]):
-            self.setProgress(60 + i * 40 / total)
+        for i, (n, col) in enumerate(to_delete[::-1]):
+            self.setProgress(90 + i * 10 / total)
             if self.isCanceled():
                 return False
-            ws.delete_cols(col + 1)
-        filters = ws.auto_filter
-        for i, col in zip(range(len(fieldnames) - len(to_delete)), get_excel_cols()):
-            pass
-        filters.ref = f"A:{col}"
+            # ws.delete_cols(n + 1)
+            ws.column_dimensions[col].hidden = True
         ws.row_dimensions[1].font = self.font_title
         # save
         wb.save(self.filename)
