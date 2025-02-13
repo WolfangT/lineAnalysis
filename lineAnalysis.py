@@ -92,10 +92,10 @@ class CheckIntersections(QgsTask):
         area = 0
         if "Polygon" in int_type:
             points = len(intersection.asGeometryCollection())
-            area = intersection.area() / 10000
+            area = intersection.area()
         if "Line" in int_type:
             points = len(intersection.asGeometryCollection())
-            length = intersection.length() / 1000
+            length = intersection.length()
         elif "Point" in int_type:
             points = len(list(intersection.vertices()))
         return points, round(length, 3), round(area, 4)

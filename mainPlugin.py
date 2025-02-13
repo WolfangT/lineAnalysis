@@ -9,7 +9,7 @@ from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QAction
 
 from .lineAnalysis import CheckIntersections
-from .outputWriter import WriteCSVTask, WriteCSVTask2, WriteXLSX
+from .outputWriter import WriteCSVTask
 from .tools import plugin_path, PLUGIN_NAME, get_prospect_layer, filter_search_layers
 from .PluginSelectionDialog import LayerSelectionDialog, FeatureSelectionDialog
 
@@ -98,14 +98,9 @@ class lineAnalisisPlugin:
             duration=-1,
         )
         # Get a available filename
-        for i in range(1, 1000):
-            filename = (
-                Path(QgsProject.instance().fileName()).parent / f"output_{i}.xslx"
-            )
-            if not filename.exists():
-                break
-        self.output_task = WriteXLSX(
-            filename, self.main_task.results, LAYERS_ATTRIBUTES_MAP
+        folder = Path(QgsProject.instance().fileName()).parent
+        self.output_task = WriteCSVTask(
+            folder, self.main_task.results, LAYERS_ATTRIBUTES_MAP
         )
         self.output_task.taskCompleted.connect(self.on_output_task_completed)
         QgsApplication.taskManager().addTask(self.output_task)

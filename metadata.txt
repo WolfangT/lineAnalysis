@@ -7,7 +7,7 @@ author=Wolfang Torres
 qgisMinimumVersion=3.0
 description=Given a line, it checks layers for other geometries that intersect it.
 about=Given a line, it checks layers for other geometries that intersect it.
-version=version 1.5
+version=version 1.6
 tracker=
 repository=https://github.com/WolfangT/lineAnalysis
 ; end of mandatory metadata
@@ -23,6 +23,7 @@ changelog=The changelog lists the plugin versions
     1.3 - add extra output format
     1.4 - add excel output format
     1.5 - bugfixes
+    1.6 - updated csv(tsv) file format
 
 ; Tags are in comma separated value format, spaces are allowed within the
 ; tag name.
