@@ -28,7 +28,7 @@ class WriteCSVTask(QgsTask):
     def __init__(self, folder, results, layers_attributes_map):
         super().__init__("Creating and Cleaning CSV")
         for i in range(1, 1000):
-            filename = folder / f"output_{i}.tsv"
+            filename = folder / f"output_{i}.csv"
             if not filename.exists():
                 break
         self.filename = filename
@@ -46,7 +46,7 @@ class WriteCSVTask(QgsTask):
             writer = csv.DictWriter(
                 csvfile,
                 fieldnames=fieldnames.keys(),
-                dialect="excel-tab",
+                dialect="excel",
                 extrasaction="ignore",
             )
             writer.writeheader()
