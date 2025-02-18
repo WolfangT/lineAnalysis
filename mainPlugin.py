@@ -1,18 +1,19 @@
 """LineAnalysis main entry point for setting up the UI, Processing."""
 
 from pathlib import Path
+import json
 
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
 from qgis.core import *
 from qgis.PyQt import uic
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtCore import QSize, Qt
+from qgis.PyQt.QtGui import *
+from qgis.PyQt.QtWidgets import *
+from qgis.PyQt.QtWidgets import QAction, QDialog
 
 from .lineAnalysis import CheckIntersections
 from .outputWriter import WriteCSVTask
-from .tools import plugin_path, PLUGIN_NAME, get_prospect_layer, filter_search_layers
-from .PluginSelectionDialog import LayerSelectionDialog, FeatureSelectionDialog
-
+from .pluginUI import LayerSelectionDialog, LayerSelectionTree
+from .tools import PLUGIN_NAME, filter_search_layers, get_prospect_layer, plugin_path
 
 # main class
 
@@ -65,17 +66,17 @@ class lineAnalisisPlugin:
                 duration=10,
             )
             return False
-        # Selects a layer from the TreeView
+        # Selects a layer from the TreeView to be the prospect layer
         selected_layers = self.iface.layerTreeView().selectedLayers()
         try:
             prospect_layer = self.select_layer(selected_layers)
-        except ValueError as err:
+        except Exception as err:
             print(err)
             self.iface.messageBar().pushMessage(
                 title=f"{PLUGIN_NAME} Error",
                 text=str(err),
                 level=Qgis.Critical,
-                duration=-1,
+                duration=0,
             )
             return False
         # get posible layers to check intersecsions on
@@ -85,8 +86,20 @@ class lineAnalisisPlugin:
                 prospect_layer,
             )
         )
+        # get layer/attributes map
+        try:
+            layer_attr_map = self.get_layer_attributes(layers)
+        except Exception as err:
+            print(err)
+            self.iface.messageBar().pushMessage(
+                title=f"{PLUGIN_NAME} Error",
+                text=str(err),
+                level=Qgis.Critical,
+                duration=0,
+            )
+            return False
         # Task execution
-        self.main_task = CheckIntersections(layers, prospect_layer)
+        self.main_task = CheckIntersections(layers, prospect_layer, layer_attr_map)
         self.main_task.taskCompleted.connect(self.on_main_task_completed)
         QgsApplication.taskManager().addTask(self.main_task)
 
@@ -100,7 +113,7 @@ class lineAnalisisPlugin:
         # Get a available filename
         folder = Path(QgsProject.instance().fileName()).parent
         self.output_task = WriteCSVTask(
-            folder, self.main_task.results, LAYERS_ATTRIBUTES_MAP
+            folder, self.main_task.results, self.main_task.layer_attr_map
         )
         self.output_task.taskCompleted.connect(self.on_output_task_completed)
         QgsApplication.taskManager().addTask(self.output_task)
@@ -113,7 +126,9 @@ class lineAnalisisPlugin:
             duration=0,
         )
 
-    def select_layer(self, layers):
+    def select_layer(
+        self, layers: tuple[QgsVectorLayer.VectorLayer]
+    ) -> QgsVectorLayer.VectorLayer:
         """Returns the selected layer name, from the TreeView or the dialog"""
         if len(layers) != 1:
             dlg = LayerSelectionDialog(self.iface.mainWindow())
@@ -122,3 +137,43 @@ class lineAnalisisPlugin:
                 return get_prospect_layer(layers, dlg.comboPlugin.currentText())
         else:
             return get_prospect_layer(layers, layers[0].name())
+
+    def get_layer_attributes(
+        self, layers: tuple[QgsVectorLayer.VectorLayer]
+    ) -> dict[str, tuple[bool, dict[str, bool]]]:
+        """Gets a map of layers:attributes list for the output"""
+        layer_attr_map_file = (
+            Path(QgsProject.instance().fileName()).parent / "layer_attr_map.json"
+        )
+        layer_attr_map = {}
+        if layer_attr_map_file.exists():
+            try:
+                with layer_attr_map_file.open("r") as _file:
+                    layer_attr_map = json.load(_file)
+            except Exception as err:
+                print(err)
+                self.iface.messageBar().pushMessage(
+                    title=f"{PLUGIN_NAME} Error",
+                    text=f"Error on loading layer/attributes map file: {err}",
+                    level=Qgis.Critical,
+                    duration=-1,
+                )
+                raise err
+        dlg = LayerSelectionTree(self.iface.mainWindow(), layers, layer_attr_map)
+        dlg.exec()
+        if dlg.result():
+            layer_attr_map = dlg.get_items()
+            try:
+                with layer_attr_map_file.open("w") as _file:
+                    json.dump(layer_attr_map, _file, indent=2)
+            except Exception as err:
+                print(err)
+                self.iface.messageBar().pushMessage(
+                    title=f"{PLUGIN_NAME} Error",
+                    text=f"Error on writing layer/attributes map file: {err}",
+                    level=Qgis.Critical,
+                    duration=-1,
+                )
+
+                raise err
+            return layer_attr_map

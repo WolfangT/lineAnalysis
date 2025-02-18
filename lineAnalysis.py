@@ -3,10 +3,10 @@
 Script for checking intersection between lines
 """
 
+from qgis.core import QgsVectorLayer
 from qgis.core import *
 
-from .tools import filter_features, PLUGIN_NAME
-
+from .tools import PLUGIN_NAME, filter_features
 
 # Classes
 
@@ -14,10 +14,16 @@ from .tools import filter_features, PLUGIN_NAME
 class CheckIntersections(QgsTask):
     """Task for analizing intersecsions between geometry"""
 
-    def __init__(self, layers, prospect_layer):
+    def __init__(
+        self,
+        layers: tuple[QgsVectorLayer.VectorLayer],
+        prospect_layer: QgsVectorLayer.VectorLayer,
+        layer_attr_map: dict[str, tuple[bool, dict[str, bool]]],
+    ):
         super().__init__("Analysing Intersections")
         self.layers = layers
         self.prospect_layer = prospect_layer
+        self.layer_attr_map = layer_attr_map
         self.lines = tuple(filter_features(prospect_layer.getFeatures()))
         self.total_features = self.get_total_work()
         self.current_features_done = 0
@@ -55,6 +61,8 @@ class CheckIntersections(QgsTask):
             f"-> Analising Feature with ID: {line.id()}", PLUGIN_NAME
         )
         for layer in self.layers:
+            if not self.layer_attr_map.get(layer.name(), (False, None))[0]:
+                continue
             QgsMessageLog.logMessage(f"->Checking layer: {layer.name()}", PLUGIN_NAME)
             for feat in layer.getFeatures(line.geometry().boundingBox()):
                 self.current_features_done += 1

@@ -1,4 +1,4 @@
-#!/home/wolfang/Documents/Trabajos/lineAnalysis/venv/bin/python3
+#!/home/wolfang/Documents/Trabajos/lineAnalysis/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
