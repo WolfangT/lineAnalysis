@@ -45,7 +45,7 @@ class CheckIntersections(QgsTask):
         )
         return True
 
-    def get_total_work(self):
+    def get_total_work(self) -> int:
         """Get totals of features to check"""
         i = 0
         for line in self.lines:
@@ -54,7 +54,7 @@ class CheckIntersections(QgsTask):
                     i += 1
         return i
 
-    def check_intersections(self, line):
+    def check_intersections(self, line) -> list[dict]:
         """Checks intersections on a feature from other layers"""
         results = []
         QgsMessageLog.logMessage(
