@@ -89,6 +89,8 @@ class lineAnalisisPlugin:
         # get layer/attributes map
         try:
             layer_attr_map = self.get_layer_attributes(layers)
+            if layer_attr_map is None:
+                return False
         except Exception as err:
             print(err)
             self.iface.messageBar().pushMessage(
